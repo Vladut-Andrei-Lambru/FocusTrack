@@ -35,6 +35,9 @@ namespace Unity.FPS.Gameplay
         private InputAction m_ReloadAction;
         private InputAction m_NextWeaponAction;
 
+        // Vladut Andrei: dash input
+        private InputAction m_DashAction;
+
         void Start()
         {
             m_PlayerCharacterController = GetComponent<PlayerCharacterController>();
@@ -55,7 +58,10 @@ namespace Unity.FPS.Gameplay
             m_CrouchAction = InputSystem.actions.FindAction("Player/Crouch");
             m_ReloadAction = InputSystem.actions.FindAction("Player/Reload");
             m_NextWeaponAction = InputSystem.actions.FindAction("Player/NextWeapon");
-            
+
+            m_DashAction = InputSystem.actions.FindAction("Player/Dash"); // Vladut Andrei
+            m_DashAction.Enable(); // Vladut Andrei
+
             m_MoveAction.Enable();
             m_LookAction.Enable();
             m_JumpAction.Enable();
@@ -65,6 +71,7 @@ namespace Unity.FPS.Gameplay
             m_CrouchAction.Enable();
             m_ReloadAction.Enable();
             m_NextWeaponAction.Enable();
+            
         }
 
         void LateUpdate()
@@ -97,14 +104,14 @@ namespace Unity.FPS.Gameplay
         {
             if (!CanProcessInput())
                 return 0.0f;
-            
+
             float input = m_LookAction.ReadValue<Vector2>().x;
 
             if (InvertXAxis)
                 input *= -1;
 
             input *= LookSensitivity;
-            
+
 #if UNITY_WEBGL
             // Mouse tends to be even more sensitive in WebGL due to mouse acceleration, so reduce it even more
             input *= WebglLookSensitivityMultiplier;
@@ -117,14 +124,14 @@ namespace Unity.FPS.Gameplay
         {
             if (!CanProcessInput())
                 return 0.0f;
-            
+
             float input = m_LookAction.ReadValue<Vector2>().y;
 
             if (InvertYAxis)
                 input *= -1;
 
             input *= LookSensitivity;
-            
+
 #if UNITY_WEBGL
             // Mouse tends to be even more sensitive in WebGL due to mouse acceleration, so reduce it even more
             input *= WebglLookSensitivityMultiplier;
@@ -231,7 +238,7 @@ namespace Unity.FPS.Gameplay
 
                 if (input > 0f)
                     return -1;
-                
+
                 if (input < 0f)
                     return 1;
             }
@@ -265,5 +272,14 @@ namespace Unity.FPS.Gameplay
 
             return 0;
         }
+
+        public bool GetDashInputDown() // Vladut Andrei
+        {
+            if (CanProcessInput())
+                return m_DashAction != null && m_DashAction.WasPressedThisFrame();
+
+            return false;
+        }
+
     }
 }

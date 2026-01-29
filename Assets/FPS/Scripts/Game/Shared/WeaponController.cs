@@ -107,7 +107,7 @@ namespace Unity.FPS.Game
         [Tooltip("Additional ammo used when charge reaches its maximum")]
         public float AmmoUsageRateWhileCharging = 1f;
 
-        [Header("Audio & Visual")] 
+        [Header("Audio & Visual")]
         [Tooltip("Optional weapon animator for OnShoot animations")]
         public Animator WeaponAnimator;
 
@@ -138,6 +138,13 @@ namespace Unity.FPS.Game
         float m_LastTimeShot = Mathf.NegativeInfinity;
         public float LastChargeTriggerTimestamp { get; private set; }
         Vector3 m_LastMuzzlePosition;
+
+        // Vladut Andrei: ranked upgrades tuning (ammo acts as heat in this template)
+        float m_HeatGainMultiplier = 1f;   // < 1 => uses less ammo per shot (overheats slower)
+        float m_CoolingMultiplier = 1f;    // > 1 => reloads faster (cools faster)
+
+        public void SetHeatGainMultiplier(float value) => m_HeatGainMultiplier = Mathf.Max(0.05f, value);
+        public void SetCoolingMultiplier(float value) => m_CoolingMultiplier = Mathf.Max(0.05f, value);
 
         public GameObject Owner { get; set; }
         public GameObject SourcePrefab { get; set; }
@@ -196,7 +203,8 @@ namespace Unity.FPS.Game
             }
         }
 
-        public void AddCarriablePhysicalBullets(int count) => m_CarriedPhysicalBullets = Mathf.Max(m_CarriedPhysicalBullets + count, MaxAmmo);
+        public void AddCarriablePhysicalBullets(int count) =>
+            m_CarriedPhysicalBullets = Mathf.Max(m_CarriedPhysicalBullets + count, MaxAmmo);
 
         void ShootShell()
         {
@@ -212,8 +220,8 @@ namespace Unity.FPS.Game
             m_PhysicalAmmoPool.Enqueue(nextShell);
         }
 
-        void PlaySFX(AudioClip sfx) => AudioUtility.CreateSFX(sfx, transform.position, AudioUtility.AudioGroups.WeaponShoot, 0.0f);
-
+        void PlaySFX(AudioClip sfx) =>
+            AudioUtility.CreateSFX(sfx, transform.position, AudioUtility.AudioGroups.WeaponShoot, 0.0f);
 
         void Reload()
         {
@@ -252,7 +260,8 @@ namespace Unity.FPS.Game
             if (AutomaticReload && m_LastTimeShot + AmmoReloadDelay < Time.time && m_CurrentAmmo < MaxAmmo && !IsCharging)
             {
                 // reloads weapon over time
-                m_CurrentAmmo += AmmoReloadRate * Time.deltaTime;
+                // Vladut Andrei
+                m_CurrentAmmo += (AmmoReloadRate * m_CoolingMultiplier) * Time.deltaTime;
 
                 // limits ammo to max value
                 m_CurrentAmmo = Mathf.Clamp(m_CurrentAmmo, 0, MaxAmmo);
@@ -344,6 +353,9 @@ namespace Unity.FPS.Game
 
         public void UseAmmo(float amount)
         {
+            // Vladut Andrei
+            amount *= m_HeatGainMultiplier;
+
             m_CurrentAmmo = Mathf.Clamp(m_CurrentAmmo - amount, 0f, MaxAmmo);
             m_CarriedPhysicalBullets -= Mathf.RoundToInt(amount);
             m_CarriedPhysicalBullets = Mathf.Clamp(m_CarriedPhysicalBullets, 0, MaxAmmo);
@@ -396,7 +408,9 @@ namespace Unity.FPS.Game
                 && m_LastTimeShot + DelayBetweenShots < Time.time)
             {
                 HandleShoot();
-                m_CurrentAmmo -= 1f;
+
+                // Vladut Andrei: use central ammo function so upgrades apply consistently
+                UseAmmo(1f);
 
                 return true;
             }

@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Unity.FPS.Game;
 using UnityEngine;
+using System.Reflection; 
+
 
 namespace Unity.FPS.Gameplay
 {
@@ -27,7 +29,7 @@ namespace Unity.FPS.Gameplay
         [Tooltip("Offset along the hit normal where the VFX will be spawned")]
         public float ImpactVfxSpawnOffset = 0.1f;
 
-        [Tooltip("Clip to play on impact")] 
+        [Tooltip("Clip to play on impact")]
         public AudioClip ImpactSfxClip;
 
         [Tooltip("Layers this projectile can collide with")]
@@ -222,11 +224,28 @@ namespace Unity.FPS.Gameplay
 
         void OnHit(Vector3 point, Vector3 normal, Collider collider)
         {
+            // Vladut Andrei: crit support (rank 3 shooting)
+            float finalDamage = Damage;
+
+            // Vladut Andrei: CritProvider is in a different assembly than fps.Gameplay, so use reflection.
+            var crit = m_ProjectileBase.Owner != null ? m_ProjectileBase.Owner.GetComponent("FPSProgression.CritProvider") : null;
+            if (crit != null)
+            {
+                var method = crit.GetType().GetMethod("TryApplyCrit", BindingFlags.Instance | BindingFlags.Public);
+                if (method != null)
+                {
+                    object[] args = { finalDamage, point }; // first arg is ref float
+                    method.Invoke(crit, args);
+                    finalDamage = (float)args[0]; // reflection writes back the ref value
+                }
+            }
+
+
             // damage
             if (AreaOfDamage)
             {
                 // area damage
-                AreaOfDamage.InflictDamageInArea(Damage, point, HittableLayers, k_TriggerInteraction,
+                AreaOfDamage.InflictDamageInArea(finalDamage, point, HittableLayers, k_TriggerInteraction,
                     m_ProjectileBase.Owner);
             }
             else
@@ -235,7 +254,7 @@ namespace Unity.FPS.Gameplay
                 Damageable damageable = collider.GetComponent<Damageable>();
                 if (damageable)
                 {
-                    damageable.InflictDamage(Damage, false, m_ProjectileBase.Owner);
+                    damageable.InflictDamage(finalDamage, false, m_ProjectileBase.Owner);
                 }
             }
 

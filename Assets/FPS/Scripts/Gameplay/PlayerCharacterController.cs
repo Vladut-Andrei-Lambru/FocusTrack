@@ -130,6 +130,16 @@ namespace Unity.FPS.Gameplay
         float m_FootstepDistanceCounter;
         float m_TargetCharacterHeight;
 
+        // Vladut Andrei: double jump support
+        int m_MaxJumps = 1;
+        int m_JumpsUsed = 0;
+
+        // Vladut Andrei: called by DoubleJumpAbility
+        public void SetMaxJumps(int value)
+        {
+            m_MaxJumps = Mathf.Clamp(value, 1, 2);
+        }
+
         const float k_JumpGroundingPreventionTime = 0.2f;
         const float k_GroundCheckDistanceInAir = 0.07f;
 
@@ -182,6 +192,12 @@ namespace Unity.FPS.Gameplay
 
             bool wasGrounded = IsGrounded;
             GroundCheck();
+
+            // Vladut Andrei: reset available jumps when grounded
+            if (IsGrounded)
+            {
+                m_JumpsUsed = 0;
+            }
 
             // landing
             if (IsGrounded && !wasGrounded)
@@ -315,7 +331,8 @@ namespace Unity.FPS.Gameplay
                         MovementSharpnessOnGround * Time.deltaTime);
 
                     // jumping
-                    if (IsGrounded && m_InputHandler.GetJumpInputDown())
+                    // Vladut Andrei: allow up to m_MaxJumps jumps before landing
+                    if (m_InputHandler.GetJumpInputDown() && (IsGrounded || m_JumpsUsed < m_MaxJumps))
                     {
                         // force the crouch state to false
                         if (SetCrouchingState(false, false))
@@ -325,6 +342,9 @@ namespace Unity.FPS.Gameplay
 
                             // then, add the jumpSpeed value upwards
                             CharacterVelocity += Vector3.up * JumpForce;
+
+                            // Vladut Andrei
+                            m_JumpsUsed++;
 
                             // play sound
                             AudioSource.PlayOneShot(JumpSfx);
